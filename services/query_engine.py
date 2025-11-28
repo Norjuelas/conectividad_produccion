@@ -15,7 +15,7 @@ DATASETS = {
     },
     # --- NUEVO DATASET ---
     "sena_ised": {
-        "file": "db/sena_ised_geo.csv",
+        "file": "db/sena_ised.parquet",
         "lat_col": "latitud",
         "lon_col": "longitud",
         "filters": ["year_reporte","departamento","d_conectado","sector_atencion"]
@@ -26,30 +26,23 @@ class QueryEngine:
     def __init__(self):
         self._cache = {}
 
-    def _load_df(self, dataset_name: str) -> pd.DataFrame:
-        """Carga el DataFrame con caché en memoria"""
+    def _load_df(self, dataset_name: str):
         if dataset_name not in self._cache:
             config = DATASETS.get(dataset_name)
             if not config:
                 raise ValueError(f"Dataset '{dataset_name}' no configurado.")
-            
-            file_path = Path(config["file"])
-            if not file_path.exists():
-                # Intenta ruta alternativa relativa
-                file_path = Path(config["file"].replace("backend/", ""))
-                if not file_path.exists():
-                    raise FileNotFoundError(f"Archivo no encontrado: {config['file']}")
 
-            # Carga optimizada
-            df = pd.read_csv(
-                file_path,
-                sep=",",
-                engine="python",
-                on_bad_lines="skip"
-            )
+            file_path = Path(config["file"])
+
+            # log.info(f"📄 Cargando dataset {dataset_name} desde {file_path}")
+
+            if dataset_name == "sena_ised":
+                df = pd.read_parquet(file_path)  # 🚀 ahora súper rápido
+            else:
+                df = pd.read_csv(file_path, low_memory=False)
 
             self._cache[dataset_name] = df
-        
+
         return self._cache[dataset_name].copy()
 
     def _filter_spatial(self, df: pd.DataFrame, bbox: str, lat_col: str, lon_col: str) -> pd.DataFrame:
