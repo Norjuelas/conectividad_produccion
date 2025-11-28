@@ -8,3 +8,6 @@ geopandas
 sqlalchemy
 geoalchemy2
 psycopg2-binary
+pyarrow
+fastparquet
+numpy
