@@ -1,0 +1,39 @@
+# datasets.yaml
+sedes_completo:
+  source: csv
+  file: "db/sedes_mock.csv"
+  format: geo
+  geom:
+    lon: "longitud"
+    lat: "latitud"
+  filters:
+    - year_reporte
+    - zona
+    - DPTO_CNMBR
+    - MPIO_CNMBR
+  columns:
+    key: sede_codigo
+    name: nombre_sede
+    establishment: nombre_establecimiento
+
+sedes_simple:
+  source: csv
+  file: "db/sedes_mock.csv"
+  format: geo
+  geom:
+    lon: "longitud"
+    lat: "latitud"
+  filters:
+    - zona
+    - DPTO_CNMBR
+sedes_consolidadas:
+  source: csv
+  file: "db/sedes_consolidadas.csv"
+  format: geo
+  geom:
+    lon: "longitud"
+    lat: "latitud"
+  title: "Sedes Educativas con Conectividad"
+  columns:
+    key: "sede_codigo"
+    name: "nombre_sede"
