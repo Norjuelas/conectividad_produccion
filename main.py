@@ -1,8 +1,9 @@
+import os
+import uvicorn
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-
+from fastapi.middleware.cors import CORSMiddleware
 from routers import data, agent
 
 app = FastAPI(
@@ -11,21 +12,21 @@ app = FastAPI(
     description="API + Visor Web Conectividad Educativa"
 )
 
-# ========================= CORS GLOBAL =========================
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
-# ========================= API ROUTERS =========================
-app.include_router(data.router, prefix="/data")
-app.include_router(agent.router, prefix="/agent")
-
-# ========================= FRONT STATIC ========================
+# STATIC
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
-async def serve_frontend():
+def home():
     return FileResponse("static/index.html")
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  # 👈 Render toma este
+    uvicorn.run(app, host="0.0.0.0", port=port)
