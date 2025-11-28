@@ -11,7 +11,7 @@ app = FastAPI(
     description="API + Visor Web Conectividad Educativa"
 )
 
-# ========================= CORS =========================
+# ========================= CORS GLOBAL =========================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,11 +19,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==================== Rutas API =========================
+# ========================= API ROUTERS =========================
 app.include_router(data.router, prefix="/data")
 app.include_router(agent.router, prefix="/agent")
 
-# ==================== STATIC FRONTEND ===================
+# ========================= FRONT STATIC ========================
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")

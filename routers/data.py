@@ -1,19 +1,21 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, Dict, Any
+from typing import Optional
 from services.query_engine import query_engine, DATASETS
+import pandas as pd
 
 router = APIRouter()
 
-# ================================
-# LISTADO DE DATASETS
-# ================================
+# =====================================================================
+# 📌 LISTA DE DATASETS DISPONIBLES
+# =====================================================================
 @router.get("/")
 def list_datasets():
     return {"datasets":[{"id":k,"filters":v["filters"]} for k,v in DATASETS.items()]}
 
-# ================================
-# ENDPOINT PRINCIPAL (EL QUE FALTA)
-# ================================
+
+# =====================================================================
+# 📌 ENDPOINT PRINCIPAL → /data/{dataset_id}
+# =====================================================================
 @router.get("/{dataset_id}")
 def get_dataset_data(
     dataset_id: str,
@@ -39,7 +41,7 @@ def get_dataset_data(
             "DPTO_CNMBR":DPTO_CNMBR,"MPIO_CNMBR":MPIO_CNMBR,
             "departamento":departamento,"d_conectado":d_conectado,
             "sector_atencion":sector_atencion
-        }.items() if v is not None}
+        }.items() if v}
 
         data=query_engine.get_data(dataset_id,format,filters,bbox,elevation_col)
 
@@ -50,54 +52,41 @@ def get_dataset_data(
     except ValueError as e:
         raise HTTPException(status_code=404,detail=str(e))
 
-# ================================
-# RANGOS / BREAKS (CORREGIDO)
-# ================================
+
+# =====================================================================
+# 📌 RANGOS / CLASIFICACIÓN — /data/{dataset_id}/breaks
+# =====================================================================
 @router.get("/{dataset_id}/breaks")
-def get_dataset_breaks(dataset_id:str, field:str,
+def get_dataset_breaks(
+    dataset_id:str, field:str,
     method:str=Query("quantile",enum=["quantile","equal_interval","unique"]),
     bins:int=5):
     return query_engine.get_classification_breaks(dataset_id,field,method,bins)
+
+
+# =====================================================================
+# 📌 CONSULTA AVANZADA CON FILTROS (GeoJSON directo)
+# =====================================================================
 @router.get("/sedes/connectividad")
 def sedes_conectividad(
-    conectado: str | None = Query(None, description="SI / NO"),
-    tecnologia: str | None = Query(None, description="FIBRA ÓPTICA / RADIO ENLACE / etc"),
-    min_mbps: float | None = Query(None, description="Filtrar por Mbps mínimos"),
-    min_equipos: int | None = Query(None, description="Sedes con al menos X equipos"),
-    min_ratio_terminales: float | None = Query(None, description="Promedio de acceso"),
+    conectado: str | None = None,
+    tecnologia: str | None = None,
+    min_mbps: float | None = None,
+    min_equipos: int | None = None,
+    min_ratio_terminales: float | None = None,
     dpto: str | None = None,
     mpio: str | None = None,
-    año: int | None = None,
-    formato: str = "geojson"
+    año: int | None = None
 ):
-    df = query_engine.get_data("sena_ised", "json", filters={}, bbox=None)
+    df = pd.DataFrame(query_engine.get_data("sena_ised", "json", filters={}, bbox=None))
 
-    import pandas as pd
-    df = pd.DataFrame(df)   # recibir JSON → DataFrame
+    if conectado:  df = df[df["conectividad_def"] == conectado]
+    if tecnologia: df = df[df["tecnologia_conec"].str.contains(tecnologia, case=False, na=False)]
+    if min_mbps: df = df[pd.to_numeric(df["anchodebandaconsolidadombps"].str.extract(r'(\d+)', expand=False),errors="coerce")>=min_mbps]
+    if min_equipos: df = df[pd.to_numeric(df["total_equipos"],errors="coerce")>=min_equipos]
+    if min_ratio_terminales: df = df[pd.to_numeric(df["estudiantes_terminales"],errors="coerce")>=min_ratio_terminales]
+    if dpto: df = df[df["dpto_ccdgo"].astype(str)==str(dpto)]
+    if mpio: df = df[df["mpio_cnmbr"].str.contains(mpio,case=False,na=False)]
+    if año: df = df[df["anno_inf"].astype(str)==str(año)]
 
-    if conectado:
-        df = df[df["conectividad_def"] == conectado]
-
-    if tecnologia:
-        df = df[df["tecnologia_conec"].str.contains(tecnologia, case=False, na=False)]
-
-    if min_mbps:
-        df = df[pd.to_numeric(df["anchodebandaconsolidadombps"].str.extract(r'(\d+)', expand=False), errors="coerce") >= min_mbps]
-
-    if min_equipos:
-        df = df[pd.to_numeric(df["total_equipos"], errors="coerce") >= min_equipos]
-
-    if min_ratio_terminales:
-        df = df[pd.to_numeric(df["estudiantes_terminales"], errors="coerce") >= min_ratio_terminales]
-
-    if dpto:
-        df = df[df["dpto_ccdgo"].astype(str) == str(dpto)]
-
-    if mpio:
-        df = df[df["mpio_cnmbr"].str.contains(mpio, case=False, na=False)]
-
-    if año:
-        df = df[df["anno_inf"].astype(str) == str(año)]
-
-    # devolver como GeoJSON
-    return query_engine._df_to_geojson_optimized(df, "latitud", "longitud")
+    return query_engine._df_to_geojson_optimized(df,"latitud","longitud")
