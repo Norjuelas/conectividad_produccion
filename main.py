@@ -1,10 +1,10 @@
-import os
-import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from routers import data, agent
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+from routers import data, agent 
+
 
 app = FastAPI(
     title="GeoData Backend ISED",
@@ -12,21 +12,24 @@ app = FastAPI(
     description="API + Visor Web Conectividad Educativa"
 )
 
-# CORS
+
+# ---------- CORS ----------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
-# STATIC
+
+# ---------- RUTAS API ----------
+app.include_router(data.router, prefix="/data")
+app.include_router(agent.router, prefix="/agent")
+
+
+# ---------- ARCHIVOS FRONT ----------
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
-def home():
+def index():
     return FileResponse("static/index.html")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))  # 👈 Render toma este
-    uvicorn.run(app, host="0.0.0.0", port=port)
